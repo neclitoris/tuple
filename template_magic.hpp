@@ -217,10 +217,10 @@ namespace tuple_ops {
 
     template<typename T, size_t... Rows, size_t... Cols>
     constexpr auto transpose_impl(T&& t, std::index_sequence<Rows...> r, std::index_sequence<Cols...>) {
-        return std::tuple_cat(std::make_tuple(map([](auto&& t) { return std::get<Cols>(std::forward<decltype(t)>(t)); },
+        return (std::make_tuple(map([](auto&& t) { return std::get<Cols>(std::forward<decltype(t)>(t)); },
                                                   std::forward<T>(t)
                                               )
-        )...);
+        ) + ...);
     }
 
     template<typename T, size_t... Rows>
@@ -256,7 +256,7 @@ namespace tuple_ops {
     constexpr auto filter(Pred&& p, T&& t) {
         return filter_impl(std::forward<Pred>(p), std::forward<T>(t), tuple_indices<T>{});
     }
-    
+
     template<size_t N, typename Tuple>
     constexpr auto drop(Tuple&& t) {
         return tuple_slice<make_range_t<N, std::tuple_size_v<std::decay_t<Tuple>>>>(t);
