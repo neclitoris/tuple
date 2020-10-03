@@ -1,7 +1,9 @@
 #pragma once
 
+#include "const_map.hpp"
 #include <iostream>
 #include <string_view>
+#include <utility>
 
 template <std::size_t Value>
 struct const_integer_wrapper {
@@ -12,6 +14,11 @@ struct const_integer_wrapper {
     friend std::ostream& operator<<(std::ostream& os, integral) { return os << value; }
 
     friend constexpr std::size_t to_size_t(integral) { return value; }
+
+    template <typename T>
+    friend constexpr auto operator,(integral i, T&& t) {
+        return detail::const_map_getter{i, std::forward<T>(t)};
+    }
 };
 
 namespace detail {

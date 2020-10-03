@@ -1,6 +1,5 @@
 #pragma once
 
-#include "const_integer.hpp"
 #include "template_magic.hpp"
 #include "tuple_ops.hpp"
 #include "type_list.hpp"
@@ -61,4 +60,7 @@ public:
 };
 
 template <typename... KVs>
-using const_map = const_map_impl<move_to_t<detail::const_map_getter, KVs>...>;
+class const_map : public const_map_impl<move_to_t<detail::const_map_getter, KVs>...> {};
+
+template <typename... KVs>
+const_map(KVs...) -> const_map<KVs...>;

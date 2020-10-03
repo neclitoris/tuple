@@ -3,6 +3,7 @@
 #include "const_integer.hpp"
 #include "const_map.hpp"
 #include "template_magic.hpp"
+#include "tuple_ops.hpp"
 
 #include <type_traits>
 #include <utility>

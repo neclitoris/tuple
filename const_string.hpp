@@ -1,5 +1,6 @@
 #pragma once
 
+#include "const_map.hpp"
 #include <array>
 #include <compare>
 #include <iostream>
@@ -19,6 +20,11 @@ struct const_string {
     friend std::ostream& operator<<(std::ostream& os, integral) { return os << value; }
 
     friend constexpr std::string_view to_string(integral) { return value; }
+
+    template <typename T>
+    friend constexpr auto operator,(integral i, T&& t) {
+        return detail::const_map_getter{i, std::forward<T>(t)};
+    }
 };
 
 // use c++20 string literal operator template if possible

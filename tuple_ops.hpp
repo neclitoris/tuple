@@ -99,7 +99,6 @@ namespace tuple_ops {
         template <typename T, size_t... Rows, size_t... Cols>
         static constexpr auto transpose(T&& t, std::index_sequence<Rows...> r, std::index_sequence<Cols...>) {
             using std::get;
-            using std::make_tuple;
             using std::tuple_cat;
             return Tuple{Tuple{map(overload<Cols>{}, std::forward<T>(t), r)}...};
         }
