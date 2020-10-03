@@ -1,75 +1,62 @@
 #pragma once
 
 #include <iostream>
-#include "const_string.hpp"
+#include <string_view>
 
+template <std::size_t Value>
+struct const_integer_wrapper {
+    static constexpr std::size_t value = Value;
 
-template<auto Value>
-struct const_integer {
-    static constexpr auto value = Value;
+    enum class integral : uint8_t {};
 
-    friend std::ostream& operator<<(std::ostream& os, const_integer) {
-        return os << value;
-    }
+    friend std::ostream& operator<<(std::ostream& os, integral) { return os << value; }
+
+    friend constexpr std::size_t to_size_t(integral) { return value; }
 };
 
 namespace detail {
-    template<char C>
-    struct to_int {
-        static_assert((C >= '0' && C <= '9') || (C >= 'a' && C <= 'f') || (C >= 'A' && C <= 'F'));
-        static constexpr size_t value = C >= '0' && C <= '9'
-                                        ? C - '0'
-                                        : C >= 'a' && C <= 'f'
-                                          ? C - 'a'
-                                          : C - 'A';
-    };
+    constexpr std::size_t atoi(char c) {
+        if (c >= '0' && c <= '9') {
+            return c - '0';
+        }
+        if (c >= 'A' && c <= 'F') {
+            return c - 'A';
+        }
+        if (c >= 'a' && c <= 'f') {
+            return c - 'a';
+        }
+        throw;
+    }
 
-    template<char... C>
-    struct pick_base {
-        static constexpr size_t res = 10;
-        using digits = const_string<C...>;
-    };
+    constexpr std::size_t parse(std::string_view str, std::size_t base) {
+        std::size_t result = 0;
+        for (auto c : str) {
+            result = base * result + atoi(c);
+        }
+        return result;
+    }
 
-    template<char... C>
-    struct pick_base<'0', C...> {
-        static constexpr size_t res = 010;
-        using digits = const_string<C...>;
-    };
-
-    template<char... C>
-    struct pick_base<'0', 'x', C...> {
-        static constexpr size_t res = 0x10;
-        using digits = const_string<C...>;
-    };
-
-    template<char... C>
-    struct pick_base<'0', 'b', C...> {
-        static constexpr size_t res = 0b10;
-        using digits = const_string<C...>;
-    };
-
-    template<char... Digits>
-    struct make_integral {
-    private:
-        template<auto Base, auto Acc, typename String>
-        struct impl;
-
-        template<auto Base, auto Acc, template<auto...> typename String, auto First, auto... Remaining>
-        struct impl<Base, Acc, String<First, Remaining...>> {
-            static constexpr auto result = impl<Base, Base * Acc + to_int<First>::value, String<Remaining...>>::result;
-        };
-
-        template<auto Base, auto Acc, template<auto...> typename String>
-        struct impl<Base, Acc, String<>> {
-            static constexpr auto result = Acc;
-        };
-
-    public:
-        using type = const_integer<impl<pick_base<Digits...>::res, 0, typename pick_base<Digits...>::digits>::result>;
-    };
+    constexpr std::size_t parse(std::string_view str) {
+        using namespace std::literals;
+        if (str.starts_with("0b"sv)) {
+            return parse({str.begin() + 2, str.end()}, 2);
+        }
+        if (str.starts_with("0x"sv)) {
+            return parse({str.begin() + 2, str.end()}, 16);
+        }
+        if (str.starts_with("0"sv)) {
+            return parse({str.begin() + 1, str.end()}, 8);
+        }
+        return parse(str, 10);
+    }
 }
 
-template<char... Digits>
-constexpr auto operator ""_() -> typename detail::make_integral<Digits...>::type {
-    return {};
+template <std::size_t I>
+using const_integer = typename const_integer_wrapper<I>::integral;
+
+template <char... Digits>
+constexpr auto operator""_() {
+    constexpr char str[] = {Digits..., '\0'};
+    using T = const_integer<detail::parse(std::string_view(str))>;
+    return T{};
 }

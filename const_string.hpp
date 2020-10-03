@@ -1,34 +1,62 @@
 #pragma once
 
+#include <array>
+#include <compare>
 #include <iostream>
-#include <string>
+#include <string_view>
+#include <utility>
 
-
-template<char... Sym>
+template <char... Sym>
 struct const_string {
-    static constexpr size_t count = sizeof...(Sym);
-    
+    static constexpr std::size_t count = sizeof...(Sym);
+
     static constexpr const char value[count + 1] = {Sym..., '\0'};
 
-    explicit operator std::string() {
-        return value;
-    }
-    
-    friend std::ostream& operator<<(std::ostream& os, const const_string&) {
-        return os << value;
-    }
-    
-    template<char... OSym>
-    friend constexpr bool operator==(const_string<Sym...> t1, const_string<OSym...> t2) {
-        return std::is_same_v<const_string<Sym...>, const_string<OSym>...>;
-    }
+    enum class integral : uint8_t {};
+
+    explicit operator std::string() { return value; }
+
+    friend std::ostream& operator<<(std::ostream& os, integral) { return os << value; }
+
+    friend constexpr std::string_view to_string(integral) { return value; }
 };
 
-template<typename T, T... Cs>
-constexpr const_string<Cs...> operator ""_() {
-    static_assert(std::is_same<char, T>::value, "Only char arguments are suitable for char list literal.");
+// use c++20 string literal operator template if possible
+#if __cpp_nontype_template_parameter_class >= 201806
+
+namespace detail {
+    template <std::size_t n>
+    struct string {
+        constexpr string(const char (&str)[n + 1]) { std::copy_n(str, n + 1, str_.begin()); }
+
+        friend constexpr auto operator<=>(const string&, const string&) = default;
+
+        std::array<char, n + 1> str_;
+    };
+
+    template <std::size_t n>
+    string(const char (&str)[n]) -> string<n - 1>;
+
+    template <typename Idx, auto h>
+    struct string_to_type;
+
+    template <std::size_t... Idx, auto h>
+    struct string_to_type<std::index_sequence<Idx...>, h> {
+        using type = const_string<h.str_[Idx]...>;
+    };
+}
+
+template <detail::string h>
+constexpr auto operator""_() {
+    using T = typename detail::string_to_type<std::make_index_sequence<h.str_.size()>, h>::type::integral;
+    return T{};
+}
+
+#else
+
+template <typename CharT, CharT... Cs>
+constexpr auto operator""_() -> typename const_string<Cs...>::integral {
     return {};
 }
 
-#define CONST_STRING(a) decltype(#a ## _)
-#define CONST_STRING_L(a) decltype(a ## _)
+#endif

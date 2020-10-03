@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.10)
-project(yet-another-nonstl)
+project(tuple)
 
-set(CMAKE_CXX_COMPILER /usr/bin/clang++)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_COMPILER /usr/bin/g++)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-add_compile_options(-Wno-gnu-string-literal-operator-template)
+add_compile_options(-Wall -Wextra)
 
 set(
     SOURCES
