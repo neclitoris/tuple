@@ -26,7 +26,21 @@ class tuple
     : public move_to_t<const_map,
                        decltype(tuple_ops::zip(
                            std::declval<detail::idx_to_tuple_t<std::make_index_sequence<sizeof...(Ts)>>>(),
-                           std::declval<type_list<Ts...>>()))> {};
+                           std::declval<type_list<Ts...>>()))> {
+public:
+    template <class Ch, class Tr>
+    friend decltype(auto) operator<<(std::basic_ostream<Ch, Tr>& os, const tuple& t) {
+        os << "(";
+        print_tuple(os, t, tuple_ops::tuple_indices<tuple>{});
+        return os << ")";
+    }
+
+private:
+    template <class Ch, class Tr, std::size_t... Is>
+    static void print_tuple(std::basic_ostream<Ch, Tr>& os, const tuple& t, std::index_sequence<Is...>) {
+        (..., (os << get<Is>(t) << (Is == sizeof...(Is) - 1 ? "" : ", ")));
+    }
+};
 
 template <size_t I, typename... Ts>
 constexpr decltype(auto) get(tuple<Ts...>& t) {

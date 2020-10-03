@@ -29,9 +29,6 @@ namespace tuple_ops {
     template <size_t N, typename Tuple>
     constexpr auto chunk(Tuple&& t);
 
-    template <class Ch, class Tr, template <class...> class Tuple, class... Args>
-    decltype(auto) operator<<(std::basic_ostream<Ch, Tr>& os, Tuple<Args...> const& t);
-
     template <typename T>
     struct tuple_traits;
 
@@ -170,18 +167,5 @@ namespace tuple_ops {
     template <size_t N, typename Tuple>
     constexpr auto chunk(Tuple&& t) {
         return impls<std::decay_t<Tuple>>::template chunk<N>(std::forward<Tuple>(t));
-    }
-
-    template <class Ch, class Tr, class Tuple, std::size_t... Is>
-    static void print_tuple(std::basic_ostream<Ch, Tr>& os, const Tuple& t, std::index_sequence<Is...>) {
-        using std::get;
-        (..., (os << get<Is>(t) << (Is == sizeof...(Is) - 1 ? "" : ", ")));
-    }
-
-    template <class Ch, class Tr, template <class...> class Tuple, class... Args>
-    decltype(auto) operator<<(std::basic_ostream<Ch, Tr>& os, const Tuple<Args...>& t) {
-        os << "(";
-        print_tuple(os, t, tuple_indices<decltype(t)>{});
-        return os << ")";
     }
 } // namespace tuple_ops

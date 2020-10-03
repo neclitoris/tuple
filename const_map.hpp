@@ -51,12 +51,31 @@ namespace detail {
 
     template <typename Key, typename Value>
     const_map_getter(Key, Value) -> const_map_getter<std::decay_t<Key>, std::decay_t<Value>>;
+
+    template <class Ch, class Tr, typename K, typename V>
+    decltype(auto) operator<<(std::basic_ostream<Ch, Tr>& os, const const_map_getter<K, V>& g) {
+        return os << K{} << " -> " << g[K{}];
+    }
 } // namespace detail
 
 template <typename... KVs>
 class const_map_impl : public KVs... {
 public:
     using KVs::operator[]...;
+
+    template <class Ch, class Tr>
+    friend decltype(auto) operator<<(std::basic_ostream<Ch, Tr>& os, const const_map_impl& mp) {
+        os << "{";
+        print_map(os, mp, std::make_index_sequence<sizeof...(KVs)>{});
+        return os << "}";
+    }
+
+private:
+    template <class Ch, class Tr, std::size_t... Is>
+    static void print_map(std::basic_ostream<Ch, Tr>& os, const const_map_impl& mp, std::index_sequence<Is...>) {
+        using std::get;
+        (..., (os << static_cast<KVs>(mp) << (Is == sizeof...(Is) - 1 ? "" : ", ")));
+    }
 };
 
 template <typename... KVs>
