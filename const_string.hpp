@@ -1,8 +1,8 @@
 #pragma once
 
 #include "const_map.hpp"
-#include <array>
-#include <compare>
+#include <algorithm>
+#include <cstdint>
 #include <iostream>
 #include <string_view>
 #include <utility>
@@ -17,7 +17,9 @@ struct const_string {
 
     explicit operator std::string() { return value; }
 
-    friend std::ostream& operator<<(std::ostream& os, integral) { return os << value; }
+    friend std::ostream& operator<<(std::ostream& os, integral) {
+        return os << value;
+    }
 
     friend constexpr std::string_view to_string(integral) { return value; }
 
@@ -29,32 +31,38 @@ struct const_string {
 
 // use c++20 string literal operator template if possible
 #if __cpp_nontype_template_parameter_class >= 201806
+#include <array>
+#include <compare>
 
 namespace detail {
-    template <std::size_t n>
-    struct string {
-        constexpr string(const char (&str)[n + 1]) { std::copy_n(str, n + 1, str_.begin()); }
+template <std::size_t n>
+struct string {
+    constexpr string(const char (&str)[n + 1]) {
+        std::copy_n(str, n + 1, str_.begin());
+    }
 
-        friend constexpr auto operator<=>(const string&, const string&) = default;
+    friend constexpr auto operator<=>(const string&, const string&) = default;
 
-        std::array<char, n + 1> str_;
-    };
+    std::array<char, n + 1> str_;
+};
 
-    template <std::size_t n>
-    string(const char (&str)[n]) -> string<n - 1>;
+template <std::size_t n>
+string(const char (&str)[n]) -> string<n - 1>;
 
-    template <typename Idx, auto h>
-    struct string_to_type;
+template <typename Idx, auto h>
+struct string_to_type;
 
-    template <std::size_t... Idx, auto h>
-    struct string_to_type<std::index_sequence<Idx...>, h> {
-        using type = const_string<h.str_[Idx]...>;
-    };
-}
+template <std::size_t... Idx, auto h>
+struct string_to_type<std::index_sequence<Idx...>, h> {
+    using type = const_string<h.str_[Idx]...>;
+};
+} // namespace detail
 
 template <detail::string h>
 constexpr auto operator""_() {
-    using T = typename detail::string_to_type<std::make_index_sequence<h.str_.size()>, h>::type::integral;
+    using T =
+        typename detail::string_to_type<std::make_index_sequence<h.str_.size()>,
+                                        h>::type::integral;
     return T{};
 }
 

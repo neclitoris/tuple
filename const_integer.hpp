@@ -1,6 +1,7 @@
 #pragma once
 
 #include "const_map.hpp"
+#include <cstdint>
 #include <iostream>
 #include <string_view>
 #include <utility>
@@ -11,7 +12,9 @@ struct const_integer_wrapper {
 
     enum class integral : uint8_t {};
 
-    friend std::ostream& operator<<(std::ostream& os, integral) { return os << value; }
+    friend std::ostream& operator<<(std::ostream& os, integral) {
+        return os << value;
+    }
 
     friend constexpr std::size_t to_size_t(integral) { return value; }
 
@@ -22,41 +25,41 @@ struct const_integer_wrapper {
 };
 
 namespace detail {
-    constexpr std::size_t atoi(char c) {
-        if (c >= '0' && c <= '9') {
-            return c - '0';
-        }
-        if (c >= 'A' && c <= 'F') {
-            return c - 'A';
-        }
-        if (c >= 'a' && c <= 'f') {
-            return c - 'a';
-        }
-        throw;
+constexpr std::size_t atoi(char c) {
+    if (c >= '0' && c <= '9') {
+        return c - '0';
     }
-
-    constexpr std::size_t parse(std::string_view str, std::size_t base) {
-        std::size_t result = 0;
-        for (auto c : str) {
-            result = base * result + atoi(c);
-        }
-        return result;
+    if (c >= 'A' && c <= 'F') {
+        return c - 'A';
     }
-
-    constexpr std::size_t parse(std::string_view str) {
-        using namespace std::literals;
-        if (str.starts_with("0b"sv)) {
-            return parse({str.begin() + 2, str.end()}, 2);
-        }
-        if (str.starts_with("0x"sv)) {
-            return parse({str.begin() + 2, str.end()}, 16);
-        }
-        if (str.starts_with("0"sv)) {
-            return parse({str.begin() + 1, str.end()}, 8);
-        }
-        return parse(str, 10);
+    if (c >= 'a' && c <= 'f') {
+        return c - 'a';
     }
+    throw;
 }
+
+constexpr std::size_t parse(std::string_view str, std::size_t base) {
+    std::size_t result = 0;
+    for (auto c : str) {
+        result = base * result + atoi(c);
+    }
+    return result;
+}
+
+constexpr std::size_t parse(std::string_view str) {
+    using namespace std::literals;
+    if (str.starts_with("0b"sv)) {
+        return parse({str.begin() + 2, str.end()}, 2);
+    }
+    if (str.starts_with("0x"sv)) {
+        return parse({str.begin() + 2, str.end()}, 16);
+    }
+    if (str.starts_with("0"sv)) {
+        return parse({str.begin() + 1, str.end()}, 8);
+    }
+    return parse(str, 10);
+}
+} // namespace detail
 
 template <std::size_t I>
 using const_integer = typename const_integer_wrapper<I>::integral;

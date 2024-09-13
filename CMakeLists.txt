@@ -8,7 +8,6 @@ add_compile_options(-Wall -Wextra)
 
 set(
     SOURCES
-    basics.hpp
     const_integer.hpp
     const_map.hpp
     const_string.hpp

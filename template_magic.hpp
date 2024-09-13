@@ -1,6 +1,5 @@
 #pragma once
 
-#include "basics.hpp"
 #include <algorithm>
 #include <iostream>
 #include <tuple>
@@ -21,8 +20,11 @@ struct index_sequence_cat {
 };
 
 template <size_t... First, size_t... Second, typename... Other>
-struct index_sequence_cat<std::index_sequence<First...>, std::index_sequence<Second...>, Other...> {
-    using res = typename index_sequence_cat<std::index_sequence<First..., Second...>, Other...>::res;
+struct index_sequence_cat<std::index_sequence<First...>,
+                          std::index_sequence<Second...>, Other...> {
+    using res =
+        typename index_sequence_cat<std::index_sequence<First..., Second...>,
+                                    Other...>::res;
 };
 
 template <size_t... First>
@@ -38,7 +40,8 @@ struct make_range;
 
 template <size_t From, size_t To>
 struct make_range<From, To, std::enable_if_t<(From < To)>> {
-    using res = index_sequence_cat_t<std::index_sequence<From>, typename make_range<From + 1, To>::res>;
+    using res = index_sequence_cat_t<std::index_sequence<From>,
+                                     typename make_range<From + 1, To>::res>;
 };
 
 template <size_t From, size_t To>
