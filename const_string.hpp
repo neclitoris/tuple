@@ -5,20 +5,25 @@
 #include <cstdint>
 #include <iostream>
 #include <span>
+#include <string>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 
 template <char... Sym>
 struct const_string {
     static constexpr std::size_t count = sizeof...(Sym);
 
-    static constexpr std::array<char, count + 1> value = {Sym..., '\0'};
+    static constexpr auto value = []() {
+        static constexpr std::array<char, count> chars{Sym...};
+        return std::string_view{chars.begin()};
+    }();
 
-    static constexpr std::array<std::byte, count + 1> bytes = {Sym..., '\0'};
+    static constexpr std::array<std::byte, count> bytes = {(std::byte)Sym...};
 
     enum class integral : uint8_t {};
 
-    explicit operator std::string() { return value; }
+    explicit operator std::string_view() { return value; }
 
     friend std::ostream& operator<<(std::ostream& os, integral) {
         return os << value;
@@ -32,9 +37,15 @@ struct const_string {
     }
 
     friend constexpr auto data(integral) {
-        constexpr std::span s{bytes.data(), count};
+        constexpr std::span s{bytes.data(), count - 1};
         return s;
     };
+
+    template <typename T>
+        requires requires(T&& v) { std::string_view{std::forward<T>(v)}; }
+    friend constexpr bool operator==(integral, T&& v) {
+        return std::string_view{std::forward<T>(v)} == value;
+    }
 };
 
 // use c++20 string literal operator template if possible

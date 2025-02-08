@@ -37,6 +37,10 @@ struct const_integer_wrapper {
         constexpr std::span s{bytes.data(), sizeof(bytes)};
         return s;
     };
+
+    friend constexpr bool operator==(integral, std::size_t v) {
+        return v == value;
+    }
 };
 
 namespace detail {

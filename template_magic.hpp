@@ -51,3 +51,23 @@ struct make_range<From, To, std::enable_if_t<From >= To>> {
 
 template <size_t From, size_t To>
 using make_range_t = typename make_range<From, To>::res;
+
+template <typename T, typename Cont>
+struct lookup;
+
+template <typename T, template <typename...> typename Cont>
+struct lookup<T, Cont<>> {};
+
+template <typename T, typename... Xs, template <typename...> typename Cont>
+struct lookup<T, Cont<T, Xs...>> {
+    static constexpr size_t value = 0;
+};
+
+template <typename T, typename X, typename... Xs,
+          template <typename...> typename Cont>
+struct lookup<T, Cont<X, Xs...>> {
+    static constexpr size_t value = lookup<T, Cont<Xs...>>::value + 1;
+};
+
+template <typename T, typename C>
+constexpr size_t lookup_v = lookup<T, C>::value;

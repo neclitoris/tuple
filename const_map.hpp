@@ -1,9 +1,12 @@
 #pragma once
 
+#include "const_integer.hpp"
 #include "perfect_hash.hpp"
+#include "template_magic.hpp"
 #include "type_list.hpp"
 
 #include <iostream>
+#include <type_traits>
 #include <utility>
 #include <variant>
 
@@ -88,7 +91,7 @@ class const_map_impl : public KVs... {
     using KVs::operator[]...;
 
     constexpr auto operator[](Binary auto key) {
-        return (this->*visitors_[table_[key]])();
+        return (this->*visitors_.at(table_[key]))();
     }
 
     constexpr void visit(Binary auto key, auto callback) {
@@ -101,6 +104,20 @@ class const_map_impl : public KVs... {
         os << "{";
         print_map(os, mp, std::make_index_sequence<sizeof...(KVs)>{});
         return os << "}";
+    }
+
+    void check() {
+        [this]<size_t... Idx>(std::index_sequence<Idx...>) {
+            auto key = []<template <typename, typename> typename P,
+                          typename Key, typename Value>(const P<Key, Value>&) {
+                return Key{};
+            };
+            static_assert(
+                ((visitors_[table_[key(static_cast<const KVs&>(*this))]] ==
+                  &const_map_impl<KVs...>::template visit<KVs>) &&
+                 ...),
+                "This is a bug");
+        }(std::make_index_sequence<sizeof...(KVs)>{});
     }
 
   private:
@@ -117,12 +134,13 @@ class const_map_impl : public KVs... {
         move_to_t<std::variant,
                   detail::const_map_values_t<const_map_impl<KVs...>>>;
 
-    template <typename KV, size_t I>
+    template <typename KV>
     visit_return_type visit() {
         using Key = decltype([]<template <typename, typename> typename P,
                                 typename Key, typename Value>(P<Key, Value>) {
             return Key{};
         }(std::declval<KV>()));
+        constexpr size_t I = lookup_v<KV, const_map_impl<KVs...>>;
         return visit_return_type{std::in_place_index<I>, (*this)[Key{}]};
     }
 
@@ -143,8 +161,7 @@ class const_map_impl : public KVs... {
             std::array<visit_return_type (const_map_impl::*)(), sizeof...(KVs)>
                 res;
             [&]<size_t... Is>(std::index_sequence<Is...>) {
-                (...,
-                 (res[Is] = &const_map_impl<KVs...>::template visit<KVs, Is>));
+                (..., (res[Is] = &const_map_impl<KVs...>::template visit<KVs>));
             }(seq);
             return res;
         }();

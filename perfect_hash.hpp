@@ -1,18 +1,29 @@
 #pragma once
 
 #include <algorithm>
+#include <concepts>
 #include <cstdint>
+#include <iostream>
 #include <iterator>
 #include <numeric>
+#include <ranges>
 #include <span>
 #include <type_traits>
+#include <variant>
 #include <vector>
 
-std::span<const std::byte> data(std::span<const std::byte> u) { return u; }
+constexpr std::span<const std::byte> data(std::span<const std::byte> u) {
+    return u;
+}
 
 template <std::integral T>
-std::span<const std::byte> data(const T& v) {
+constexpr std::span<const std::byte> data(const T& v) {
     return as_bytes(std::span{&v, 1});
+}
+
+template <std::ranges::contiguous_range T>
+constexpr std::span<const std::byte> data(const T& r) {
+    return as_bytes(std::span{std::ranges::data(r), std::ranges::size(r)});
 }
 
 template <typename T>
@@ -116,19 +127,38 @@ class perfect_hash_table {
         }
 
         (..., (layer2[layer1[default_hash_fun(Keys) % layer1.size()](Keys) %
-                      layer2.size()] = data(Keys)));
+                      layer2.size()] = check_key{Keys}));
     }
 
     constexpr size_t operator[](Binary auto key) const {
         auto idx = layer1[default_hash_fun(key) % layer1.size()](key);
         if (idx == static_cast<size_t>(-1))
             return -1;
-        if (!std::ranges::equal(layer2[idx % layer2.size()], data(key)))
-            return -1;
-        return idx % layer2.size();
+        idx %= layer2.size();
+        return layer2[idx](key) ? idx : -1;
     }
 
   private:
+    struct check_key {
+        constexpr bool operator()(auto key) const {
+            bool equals;
+            std::visit(
+                [&](auto stored) {
+                    if constexpr (requires {
+                                      { key == stored } -> std::same_as<bool>;
+                                  })
+                        equals = key == stored;
+                    else
+                        equals = false;
+                },
+                var);
+
+            return equals;
+        }
+
+        std::variant<decltype(Keys)...> var;
+    };
+
     std::array<hash_fun, sizeof...(Keys)> layer1;
-    std::array<std::span<const std::byte>, sizeof...(Keys)> layer2;
+    std::array<check_key, sizeof...(Keys)> layer2;
 };
