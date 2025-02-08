@@ -1,9 +1,14 @@
 #pragma once
 
+#include "perfect_hash.hpp"
 #include "type_list.hpp"
 
 #include <iostream>
 #include <utility>
+#include <variant>
+
+template <typename... KVs>
+class const_map_impl;
 
 namespace detail {
 template <typename Key, typename Value, bool = std::is_class_v<Value>>
@@ -59,12 +64,36 @@ decltype(auto) operator<<(std::basic_ostream<Ch, Tr>& os,
                           const const_map_getter<K, V>& g) {
     return os << K{} << " -> " << g[K{}];
 }
+
+template <typename T>
+struct const_map_traits;
+
+template <template <typename, typename> typename... Wrappers, typename... Keys,
+          typename... Values>
+struct const_map_traits<const_map_impl<Wrappers<Keys, Values>...>> {
+    using keys = type_list<Keys...>;
+    using values = type_list<Values...>;
+};
+
+template <typename T>
+using const_map_keys_t = typename const_map_traits<T>::keys;
+
+template <typename T>
+using const_map_values_t = typename const_map_traits<T>::values;
 } // namespace detail
 
 template <typename... KVs>
 class const_map_impl : public KVs... {
   public:
     using KVs::operator[]...;
+
+    constexpr auto operator[](Binary auto key) {
+        return (this->*visitors_[table_[key]])();
+    }
+
+    constexpr void visit(Binary auto key, auto callback) {
+        std::visit(callback, (*this)[key]);
+    }
 
     template <class Ch, class Tr>
     friend decltype(auto) operator<<(std::basic_ostream<Ch, Tr>& os,
@@ -83,11 +112,55 @@ class const_map_impl : public KVs... {
         (...,
          (os << static_cast<KVs>(mp) << (Is == sizeof...(Is) - 1 ? "" : ", ")));
     }
+
+    using visit_return_type =
+        move_to_t<std::variant,
+                  detail::const_map_values_t<const_map_impl<KVs...>>>;
+
+    template <typename KV, size_t I>
+    visit_return_type visit() {
+        using Key = decltype([]<template <typename, typename> typename P,
+                                typename Key, typename Value>(P<Key, Value>) {
+            return Key{};
+        }(std::declval<KV>()));
+        return visit_return_type{std::in_place_index<I>, (*this)[Key{}]};
+    }
+
+  private:
+    static constexpr decltype([]<typename... Keys>(type_list<Keys...>) {
+        return perfect_hash_table<Keys{}...>{};
+    }(detail::const_map_keys_t<const_map_impl<KVs...>>{})) table_{};
+
+    static constexpr std::array<visit_return_type (const_map_impl::*)(),
+                                sizeof...(KVs)>
+        visitors_ = []() {
+            auto key = []<template <typename, typename> typename P,
+                          typename Key, typename Value>(P<Key, Value>) {
+                return Key{};
+            };
+            std::index_sequence<table_[decltype(key(std::declval<KVs>())){}]...>
+                seq;
+            std::array<visit_return_type (const_map_impl::*)(), sizeof...(KVs)>
+                res;
+            [&]<size_t... Is>(std::index_sequence<Is...>) {
+                (...,
+                 (res[Is] = &const_map_impl<KVs...>::template visit<KVs, Is>));
+            }(seq);
+            return res;
+        }();
 };
 
 template <typename... KVs>
+class const_map;
+
+template <typename... KVs>
 class const_map
-    : public const_map_impl<move_to_t<detail::const_map_getter, KVs>...> {};
+    : public const_map_impl<move_to_t<detail::const_map_getter, KVs>...> {
+  public:
+    constexpr const_map(KVs&&... kvs)
+        : const_map_impl<move_to_t<detail::const_map_getter, KVs>...>{
+              std::forward<KVs>(kvs)...} {}
+};
 
 template <typename... KVs>
 const_map(KVs...) -> const_map<KVs...>;

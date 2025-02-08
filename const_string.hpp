@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <iostream>
+#include <span>
 #include <string_view>
 #include <utility>
 
@@ -11,7 +12,9 @@ template <char... Sym>
 struct const_string {
     static constexpr std::size_t count = sizeof...(Sym);
 
-    static constexpr const char value[count + 1] = {Sym..., '\0'};
+    static constexpr std::array<char, count + 1> value = {Sym..., '\0'};
+
+    static constexpr std::array<std::byte, count + 1> bytes = {Sym..., '\0'};
 
     enum class integral : uint8_t {};
 
@@ -27,6 +30,11 @@ struct const_string {
     friend constexpr auto operator,(integral i, T&& t) {
         return detail::const_map_getter{i, std::forward<T>(t)};
     }
+
+    friend constexpr auto data(integral) {
+        constexpr std::span s{bytes.data(), count};
+        return s;
+    };
 };
 
 // use c++20 string literal operator template if possible
