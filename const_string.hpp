@@ -1,13 +1,9 @@
 #pragma once
 
 #include "const_map.hpp"
-#include <algorithm>
 #include <cstdint>
 #include <iostream>
-#include <span>
-#include <string>
 #include <string_view>
-#include <type_traits>
 #include <utility>
 
 template <char... Sym>
@@ -36,10 +32,7 @@ struct const_string {
         return detail::const_map_getter{i, std::forward<T>(t)};
     }
 
-    friend constexpr auto data(integral) {
-        constexpr std::span s{bytes.data(), count - 1};
-        return s;
-    };
+    friend constexpr auto data(integral) { return data(value); };
 
     template <typename T>
         requires requires(T&& v) { std::string_view{std::forward<T>(v)}; }

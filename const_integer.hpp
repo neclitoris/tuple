@@ -3,22 +3,12 @@
 #include "const_map.hpp"
 #include <cstdint>
 #include <iostream>
-#include <span>
 #include <string_view>
 #include <utility>
 
 template <std::size_t Value>
 struct const_integer_wrapper {
     static constexpr std::size_t value = Value;
-
-    static constexpr auto bytes = [](size_t value) {
-        std::array<std::byte, sizeof(std::size_t)> res;
-        for (size_t i = sizeof(std::size_t); i > 0; --i) {
-            res[sizeof(size_t) - i] = (std::byte)value;
-            value >>= 8;
-        }
-        return res;
-    }(value);
 
     enum class integral : uint8_t {};
 
@@ -33,10 +23,7 @@ struct const_integer_wrapper {
         return detail::const_map_getter{i, std::forward<T>(t)};
     }
 
-    friend constexpr auto data(integral) {
-        constexpr std::span s{bytes.data(), sizeof(bytes)};
-        return s;
-    };
+    friend constexpr auto data(integral) { return data(value); };
 
     friend constexpr bool operator==(integral, std::size_t v) {
         return v == value;

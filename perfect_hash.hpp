@@ -3,33 +3,40 @@
 #include <algorithm>
 #include <concepts>
 #include <cstdint>
-#include <iostream>
 #include <iterator>
 #include <numeric>
 #include <ranges>
-#include <span>
 #include <type_traits>
 #include <variant>
 #include <vector>
 
-constexpr std::span<const std::byte> data(std::span<const std::byte> u) {
+constexpr std::vector<std::byte> data(const std::vector<std::byte>& u) {
     return u;
 }
 
 template <std::integral T>
-constexpr std::span<const std::byte> data(const T& v) {
-    return as_bytes(std::span{&v, 1});
+constexpr std::vector<std::byte> data(const T& v) {
+    std::vector<std::byte> vec;
+    for (size_t i = 0; i != sizeof(v); ++i) {
+        vec.push_back(static_cast<std::byte>(v >> 8 * i));
+    }
+    return vec;
 }
 
 template <std::ranges::contiguous_range T>
-constexpr std::span<const std::byte> data(const T& r) {
-    return as_bytes(std::span{std::ranges::data(r), std::ranges::size(r)});
+constexpr std::vector<std::byte> data(const T& r) {
+    std::vector<std::byte> v;
+    for (auto e : r) {
+        auto b = data(e);
+        std::copy(std::cbegin(b), std::cend(b), std::back_inserter(v));
+    }
+    return v;
 }
 
 template <typename T>
 concept Binary = requires {
     std::is_convertible_v<decltype(data(std::declval<T>())),
-                          std::span<const std::byte>>;
+                          std::vector<std::byte>>;
 };
 
 struct hash_fun {
@@ -51,7 +58,7 @@ struct hash_fun {
 };
 
 constexpr auto make_hash_fun(size_t base) {
-    return hash_fun{base, [](size_t hash, std::span<const std::byte> data) {
+    return hash_fun{base, [](size_t hash, std::ranges::range auto data) {
                         for (std::byte byte : data) {
                             hash *= 0x00000100000001b3;
                             hash ^= static_cast<size_t>(byte);
@@ -67,7 +74,7 @@ class perfect_hash_table {
   public:
     constexpr perfect_hash_table() {
         std::array<bool, sizeof...(Keys)> occupied = {0};
-        std::vector<std::vector<std::span<const std::byte>>> buckets;
+        std::vector<std::vector<std::vector<std::byte>>> buckets;
         buckets.resize(sizeof...(Keys));
         (..., buckets[default_hash_fun(Keys) % buckets.size()].push_back(
                   data(Keys)));
