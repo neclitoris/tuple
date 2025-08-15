@@ -91,7 +91,7 @@ class const_map_impl : public KVs... {
     using KVs::operator[]...;
 
     constexpr auto operator[](Binary auto key) {
-        return (this->*visitors_.at(table_[key]))();
+        return (this->*visitors_[table_[key]])();
     }
 
     constexpr void visit(Binary auto key, auto callback) {
@@ -125,7 +125,6 @@ class const_map_impl : public KVs... {
     static void print_map(std::basic_ostream<Ch, Tr>& os,
                           const const_map_impl& mp,
                           std::index_sequence<Is...>) {
-        using std::get;
         (...,
          (os << static_cast<KVs>(mp) << (Is == sizeof...(Is) - 1 ? "" : ", ")));
     }

@@ -78,11 +78,4 @@ constexpr auto operator""_() {
     return T{};
 }
 
-#else
-
-template <typename CharT, CharT... Cs>
-constexpr auto operator""_() -> typename const_string<Cs...>::integral {
-    return {};
-}
-
 #endif

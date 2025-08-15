@@ -1,6 +1,8 @@
 #pragma once
 
 #include "const_map.hpp"
+#include <bit>
+#include <climits>
 #include <cstdint>
 #include <iostream>
 #include <string_view>
@@ -23,7 +25,21 @@ struct const_integer_wrapper {
         return detail::const_map_getter{i, std::forward<T>(t)};
     }
 
-    friend constexpr auto data(integral) { return data(value); };
+    friend constexpr auto data(integral) {
+        std::vector<std::byte> res;
+        if constexpr (std::endian::native == std::endian::big) {
+            for (size_t i = sizeof(size_t) - 1; i != (size_t)-1; --i) {
+                res.push_back((std::byte)(value >> i * CHAR_BIT));
+            }
+        } else if constexpr (std::endian::native == std::endian::little) {
+            for (size_t i = 0; i < sizeof(size_t); ++i) {
+                res.push_back((std::byte)(value >> i * CHAR_BIT));
+            }
+        } else {
+            static_assert(false, "Unsupported endianness");
+        }
+        return res;
+    };
 
     friend constexpr bool operator==(integral, std::size_t v) {
         return v == value;
