@@ -14,6 +14,17 @@ struct length<Container<Ts...>> {
     static constexpr size_t res = sizeof...(Ts);
 };
 
+template <typename T, typename U>
+struct prepend;
+
+template <typename T, template <typename...> typename Container, typename... Ts>
+struct prepend<T, Container<Ts...>> {
+    using res = Container<T, Ts...>;
+};
+
+template <typename T, typename C>
+using prepend_t = typename prepend<T, C>::res;
+
 template <typename... A>
 struct index_sequence_cat {
     using res = std::index_sequence<>;

@@ -91,7 +91,10 @@ class const_map_impl : public KVs... {
     using KVs::operator[]...;
 
     constexpr auto operator[](Binary auto key) {
-        return (this->*visitors_[table_[key]])();
+        const auto i = table_[key];
+        if (i != static_cast<size_t>(-1))
+            return (this->*visitors_[i])();
+        return visit_return_type{};
     }
 
     constexpr void visit(Binary auto key, auto callback) {
@@ -129,9 +132,10 @@ class const_map_impl : public KVs... {
          (os << static_cast<KVs>(mp) << (Is == sizeof...(Is) - 1 ? "" : ", ")));
     }
 
-    using visit_return_type =
+    using visit_return_type = prepend_t<
+        std::monostate,
         move_to_t<std::variant,
-                  detail::const_map_values_t<const_map_impl<KVs...>>>;
+                  detail::const_map_values_t<const_map_impl<KVs...>>>>;
 
     template <typename KV>
     visit_return_type visit() {
@@ -140,7 +144,7 @@ class const_map_impl : public KVs... {
             return Key{};
         }(std::declval<KV>()));
         constexpr size_t I = lookup_v<KV, const_map_impl<KVs...>>;
-        return visit_return_type{std::in_place_index<I>, (*this)[Key{}]};
+        return visit_return_type{std::in_place_index<I + 1>, (*this)[Key{}]};
     }
 
   private:
